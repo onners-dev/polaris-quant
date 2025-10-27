@@ -1,0 +1,10 @@
+pandas
+yfinance
+duckdb
+pyarrow
+fastapi
+uvicorn
+scikit-learn
+xgboost
+pydantic
+httpx

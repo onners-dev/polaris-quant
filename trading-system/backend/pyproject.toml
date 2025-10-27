@@ -1,0 +1,13 @@
+[project]
+name = "polaris-quant-backend"
+version = "0.1.0"
+description = "Backend for Polaris Quant Trading System"
+authors = ["Onni-Petteri Rantanen onnin2003@gmail.com"]
+requires-python = ">=3.9"
+
+[tool.setuptools]
+packages = ["src"]
+
+[build-system]
+requires = ["setuptools>=60.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
