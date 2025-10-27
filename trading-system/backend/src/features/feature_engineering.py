@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from src.utils.pandas_helpers import flatten_columns
 
 CLEANED_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/cleaned"))
 FEATURES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/features"))
@@ -75,14 +76,29 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     df = add_volume_features(df)
     return df
 
-for fname in os.listdir(CLEANED_DIR):
-    if fname.endswith(".parquet"):
-        input_path = os.path.join(CLEANED_DIR, fname)
-        output_path = os.path.join(FEATURES_DIR, fname)
-        df = pd.read_parquet(input_path)
-        if "Close" in df.columns and "High" in df.columns and "Low" in df.columns and "Volume" in df.columns:
-            features = compute_features(df)
-            features.to_parquet(output_path)
+def compute_all_ticker_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = flatten_columns(df)
+    tickers = sorted(set(col.split("_")[0] for col in df.columns if "_" in col))
+    features_by_ticker = []
+    for ticker in tickers:
+        ticker_cols = [col for col in df.columns if col.startswith(f"{ticker}_")]
+        df_ticker = df[ticker_cols].copy()
+        df_ticker.columns = [col[len(ticker)+1:] for col in ticker_cols]
+        feats = compute_features(df_ticker)
+        feats = feats.add_prefix(f"{ticker}_")
+        features_by_ticker.append(feats)
+    if features_by_ticker:
+        features_df = pd.concat(features_by_ticker, axis=1)
+    else:
+        features_df = compute_features(df)
+    return features_df
+
+if __name__ == "__main__":
+    for fname in os.listdir(CLEANED_DIR):
+        if fname.endswith(".parquet"):
+            input_path = os.path.join(CLEANED_DIR, fname)
+            output_path = os.path.join(FEATURES_DIR, fname)
+            df = pd.read_parquet(input_path)
+            feats_df = compute_all_ticker_features(df)
+            feats_df.to_parquet(output_path)
             print(f"Engineered features saved to {output_path}")
-        else:
-            print(f"Skipping {fname}: required columns missing")

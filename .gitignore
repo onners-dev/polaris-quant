@@ -1,0 +1,163 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.$py.class
+
+# C extensions
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.venv/
+# VSCode virtual env
+.vscode/.python/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+test-results/
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Cython debug symbols
+cython_debug/
+
+# FastAPI/Flask server logs
+instance/
+.webassets-cache
+
+# Data, models, and outputs - TRACK folder, IGNORE everything but .gitkeep
+
+!trading-system/data/.gitkeep
+trading-system/data/raw/*
+!trading-system/data/raw/.gitkeep
+trading-system/data/cleaned/*
+!trading-system/data/cleaned/.gitkeep
+trading-system/data/features/*
+!trading-system/data/features/.gitkeep
+trading-system/data/backups/*
+!trading-system/data/backups/.gitkeep
+
+trading-system/models/*
+!trading-system/models/.gitkeep
+trading-system/models/artifacts/*
+!trading-system/models/artifacts/.gitkeep
+
+# Backend caches and static
+trading-system/backend/src/__pycache__/
+trading-system/backend/tests/__pycache__/
+
+# Frontend Node & build
+trading-system/frontend/node_modules/
+trading-system/frontend/dist/
+trading-system/frontend/.next/
+trading-system/frontend/.turbo/
+trading-system/frontend/.cache/
+trading-system/frontend/.eslintcache
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Yarn/Node/React
+trading-system/frontend/.next/
+trading-system/frontend/.turbo/
+trading-system/frontend/.cache/
+trading-system/frontend/.eslintcache
+
+# Logs
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database.duckdb
+*.bak
+
+# CSV exports and large data artifacts
+*.csv
+*.parquet
+
+# Experiment artifacts & checkpoints
+checkpoints/
+logs/
+output/
+results/
+artifacts/
+
+# GitHub Actions and related
+.github/workflows/*.log
+
+# Sphinx docs
+docs/_build/
+
+# DVC cache
+.dvc/
+
+# File for pearai agent state
+pearai.toml
+
+# Mac/Linux swap files
+*.swp
+*~
