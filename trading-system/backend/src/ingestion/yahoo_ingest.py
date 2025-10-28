@@ -1,8 +1,8 @@
 import time
-import os
 from typing import List, Optional
 import yfinance as yf
 import pandas as pd
+from src.utils.duckdb_helpers import write_table
 
 MAX_RETRIES = 3
 RETRY_BACKOFF = 5
@@ -38,27 +38,16 @@ def fetch_yahoo_data(
             else:
                 return None
 
-def save_raw_data(df: pd.DataFrame, file_path: str) -> None:
-    df.to_parquet(file_path)
-
 def ingest_yahoo(
     tickers: List[str],
     start: str,
     end: str,
     interval: str = "1d",
-    raw_dir: Optional[str] = None,
+    raw_dir = None,  # Ignored for DuckDB-only
 ) -> None:
     df = fetch_yahoo_data(tickers, start, end, interval)
     if df is not None:
-        if raw_dir is None:
-            raw_dir = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "../../../data/raw")
-            )
-        os.makedirs(raw_dir, exist_ok=True)
-        tickers_string = "_".join(sorted(tickers))
-        filename = f"{tickers_string}_{start}_{end}_{interval}.parquet"
-        output_path = os.path.join(raw_dir, filename)
-        print(f"[DEBUG] Writing to {output_path}")
-        save_raw_data(df, output_path)
+        write_table(df, "raw")
+        print(f"[DEBUG] Data written to DuckDB 'raw' table")
     else:
         print("[DEBUG] fetch_yahoo_data returned None")

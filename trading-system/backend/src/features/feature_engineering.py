@@ -1,11 +1,7 @@
-import os
 import pandas as pd
 import numpy as np
 from src.utils.pandas_helpers import flatten_columns
-
-CLEANED_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/cleaned"))
-FEATURES_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/features"))
-os.makedirs(FEATURES_DIR, exist_ok=True)
+from src.utils.duckdb_helpers import read_table, write_table
 
 def add_returns(df: pd.DataFrame) -> pd.DataFrame:
     df["Return_1d"] = df["Close"].pct_change()
@@ -87,18 +83,21 @@ def compute_all_ticker_features(df: pd.DataFrame) -> pd.DataFrame:
         feats = compute_features(df_ticker)
         feats = feats.add_prefix(f"{ticker}_")
         features_by_ticker.append(feats)
+
     if features_by_ticker:
         features_df = pd.concat(features_by_ticker, axis=1)
     else:
-        features_df = compute_features(df)
+        # Only fallback to raw if single-ticker columns are present (defensive)
+        expected = {"Open", "High", "Low", "Close", "Volume"}
+        if expected.issubset(set(df.columns)):
+            features_df = compute_features(df)
+        else:
+            raise ValueError("No ticker columns found, and single-ticker expected columns not in dataframe.")
     return features_df
 
+
 if __name__ == "__main__":
-    for fname in os.listdir(CLEANED_DIR):
-        if fname.endswith(".parquet"):
-            input_path = os.path.join(CLEANED_DIR, fname)
-            output_path = os.path.join(FEATURES_DIR, fname)
-            df = pd.read_parquet(input_path)
-            feats_df = compute_all_ticker_features(df)
-            feats_df.to_parquet(output_path)
-            print(f"Engineered features saved to {output_path}")
+    df = read_table("cleaned")
+    feats_df = compute_all_ticker_features(df)
+    write_table(feats_df, "features")
+    print("Engineered features written to DuckDB table 'features'")
