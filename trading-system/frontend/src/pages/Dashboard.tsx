@@ -1,5 +1,5 @@
 import { useAppStore } from "../store/useAppStore";
-import { ingestYahooStock } from "../services/api";
+import { ingestYahooStock } from "../services/ingestApi";
 import { useState } from "react";
 
 export default function Dashboard() {
