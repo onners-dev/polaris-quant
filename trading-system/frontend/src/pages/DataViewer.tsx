@@ -3,12 +3,20 @@ import { getAvailableData } from "../services/dataApi";
 import { getTableData } from "../services/tableDataApi";
 import { cleanData } from "../services/cleanApi";
 import { generateFeatures } from "../services/featuresApi";
+import TickerName from "../components/TickerName";
+import { useTickerMeta } from "../hooks/useTickerMeta";
+
+type TableInfo = {
+  start_date?: string;
+  end_date?: string;
+  row_count?: number;
+};
 
 type TickerData = {
   ticker: string;
-  start_date: string;
-  end_date: string;
-  row_count: number;
+  raw?: TableInfo;
+  cleaned?: TableInfo;
+  features?: TableInfo;
 };
 
 const TABLE_OPTIONS = [
@@ -18,6 +26,7 @@ const TABLE_OPTIONS = [
 ];
 
 export default function DataViewer() {
+  const [meta] = useTickerMeta();
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,17 +66,19 @@ export default function DataViewer() {
     try {
       await generateFeatures();
       setActionStatus("Features generated!");
+      loadData();
     } catch (e: any) {
       setActionStatus("Feature extraction failed: " + (e.message || e));
     }
   }
 
-  async function handleViewDetails(ticker: string) {
+  async function handleViewDetails(ticker: string, table: "raw" | "cleaned" | "features") {
     setSelectedTicker(ticker);
+    setSelectedTable(table);
     setTableData([]);
     setActionStatus("Loading data...");
     try {
-      const data = await getTableData(selectedTable, ticker);
+      const data = await getTableData(table, ticker);
       setTableData(Array.isArray(data) ? data : []);
       setActionStatus(null);
     } catch (e: any) {
@@ -77,9 +88,8 @@ export default function DataViewer() {
   }
 
   useEffect(() => {
-    // When changing table or ticker, fetch data again
-    if (selectedTicker) {
-      handleViewDetails(selectedTicker);
+    if (selectedTicker && selectedTable) {
+      handleViewDetails(selectedTicker, selectedTable);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTable, selectedTicker]);
@@ -112,9 +122,10 @@ export default function DataViewer() {
             <thead>
               <tr>
                 <th className="px-4 py-2 border-b">Ticker</th>
-                <th className="px-4 py-2 border-b">Start Date</th>
-                <th className="px-4 py-2 border-b">End Date</th>
-                <th className="px-4 py-2 border-b">Rows</th>
+                <th className="px-4 py-2 border-b">Company</th>
+                <th className="px-4 py-2 border-b">Raw</th>
+                <th className="px-4 py-2 border-b">Cleaned</th>
+                <th className="px-4 py-2 border-b">Features</th>
                 <th className="px-4 py-2 border-b">Actions</th>
               </tr>
             </thead>
@@ -123,16 +134,42 @@ export default function DataViewer() {
                 tickers.map((row) => (
                   <tr key={row.ticker}>
                     <td className="px-4 py-2 border-b font-mono">{row.ticker}</td>
-                    <td className="px-4 py-2 border-b">{row.start_date?.substring(0, 10)}</td>
-                    <td className="px-4 py-2 border-b">{row.end_date?.substring(0, 10)}</td>
-                    <td className="px-4 py-2 border-b">{row.row_count}</td>
                     <td className="px-4 py-2 border-b">
-                      <button
-                        className="bg-gray-200 hover:bg-gray-300 rounded px-3 py-1"
-                        onClick={() => setSelectedTicker(row.ticker)}
-                      >
-                        View
-                      </button>
+                      <TickerName ticker={row.ticker} />
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {row.raw
+                        ? `${row.raw.start_date?.substring(0, 10) || ""}—${row.raw.end_date?.substring(0, 10) || ""} (${row.raw.row_count})`
+                        : <span className="text-gray-400">None</span>}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {row.cleaned
+                        ? `${row.cleaned.start_date?.substring(0, 10) || ""}—${row.cleaned.end_date?.substring(0, 10) || ""} (${row.cleaned.row_count})`
+                        : <span className="text-gray-400">None</span>}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {row.features
+                        ? `${row.features.start_date?.substring(0, 10) || ""}—${row.features.end_date?.substring(0, 10) || ""} (${row.features.row_count})`
+                        : <span className="text-gray-400">None</span>}
+                    </td>
+                    <td className="px-4 py-2 border-b">
+                      {TABLE_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          className={
+                            ((row as any)[opt.value])
+                              ? "bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 mr-1"
+                              : "bg-gray-100 rounded px-3 py-1 mr-1 opacity-50 cursor-not-allowed"
+                          }
+                          disabled={!(row as any)[opt.value]}
+                          onClick={() => {
+                            if ((row as any)[opt.value]) {
+                              setSelectedTicker(row.ticker);
+                              setSelectedTable(opt.value as any);
+                            }
+                          }}
+                        >View {opt.label}</button>
+                      ))}
                     </td>
                   </tr>
                 ))}
@@ -141,16 +178,7 @@ export default function DataViewer() {
           {selectedTicker && (
             <div className="mt-6 bg-gray-100 rounded p-4">
               <h3 className="font-bold text-lg mb-2 flex items-center gap-4">
-                Details for {selectedTicker}
-                <select
-                  value={selectedTable}
-                  onChange={e => setSelectedTable(e.target.value as any)}
-                  className="text-base bg-white px-2 py-1 rounded border ml-auto"
-                >
-                  {TABLE_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                Details for {selectedTicker}: {TABLE_OPTIONS.find(opt => opt.value === selectedTable)?.label}
               </h3>
               {actionStatus && <span>{actionStatus}</span>}
               {!actionStatus && tableData.length === 0 && (
@@ -161,7 +189,6 @@ export default function DataViewer() {
                   {JSON.stringify(tableData.slice(0, 10), null, 2)} {/* Display sample */}
                 </pre>
               )}
-              {/* Here you can add tabs, charts etc in the future */}
             </div>
           )}
         </div>
