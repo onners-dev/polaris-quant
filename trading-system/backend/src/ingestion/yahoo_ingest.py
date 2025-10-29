@@ -1,8 +1,9 @@
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import yfinance as yf
 import pandas as pd
 from src.utils.duckdb_helpers import write_table
+from src.utils.pandas_helpers import flatten_columns
 
 MAX_RETRIES = 3
 RETRY_BACKOFF = 5
@@ -25,8 +26,6 @@ def fetch_yahoo_data(
                 threads=True,
                 progress=False,
             )
-            print(f"[DEBUG] yfinance returned {'empty' if df.empty else 'non-empty'} dataframe")
-            print(f"[DEBUG] DataFrame shape: {df.shape}")
             if not df.empty:
                 return df
             else:
@@ -43,11 +42,32 @@ def ingest_yahoo(
     start: str,
     end: str,
     interval: str = "1d",
-    raw_dir = None,  # Ignored for DuckDB-only
-) -> None:
+    raw_dir=None,
+) -> Dict[str, Any]:
     df = fetch_yahoo_data(tickers, start, end, interval)
-    if df is not None:
+    if df is not None and not df.empty:
+        df = flatten_columns(df)
         write_table(df, "raw")
-        print(f"[DEBUG] Data written to DuckDB 'raw' table")
+        min_date = str(df.index.min())
+        max_date = str(df.index.max())
+        summary = {
+            "success": True,
+            "tickers": tickers,
+            "row_count": int(len(df)),
+            "start_date": min_date,
+            "end_date": max_date,
+        }
+        print(f"[INFO] Data written to DuckDB 'raw' table: {summary}")
+        return summary
     else:
-        print("[DEBUG] fetch_yahoo_data returned None")
+        error_msg = "No data available from Yahoo Finance for the given parameters."
+        print(f"[INFO] {error_msg}")
+        return {"success": False, "error": error_msg}
+
+if __name__ == "__main__":
+    # Example for CLI/manual test use only
+    TICKERS = ["AAPL", "MSFT"]
+    START = "2023-01-01"
+    END = "2023-06-01"
+    result = ingest_yahoo(TICKERS, START, END)
+    print(result)
