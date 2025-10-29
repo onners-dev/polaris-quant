@@ -76,24 +76,37 @@ def compute_all_ticker_features(df: pd.DataFrame) -> pd.DataFrame:
     df = flatten_columns(df)
     tickers = sorted(set(col.split("_")[0] for col in df.columns if "_" in col))
     features_by_ticker = []
+    date_col = df["Date"] if "Date" in df.columns else None
     for ticker in tickers:
         ticker_cols = [col for col in df.columns if col.startswith(f"{ticker}_")]
         df_ticker = df[ticker_cols].copy()
         df_ticker.columns = [col[len(ticker)+1:] for col in ticker_cols]
         feats = compute_features(df_ticker)
         feats = feats.add_prefix(f"{ticker}_")
+        if date_col is not None:
+            feats = feats.copy()
+            feats["Date"] = date_col.values
         features_by_ticker.append(feats)
 
     if features_by_ticker:
-        features_df = pd.concat(features_by_ticker, axis=1)
+        # All will have Date column; drop duplicate Date columns except once
+        features_df = features_by_ticker[0]
+        for df_other in features_by_ticker[1:]:
+            features_df = features_df.merge(df_other, on="Date", how="outer")
+        cols = list(features_df.columns)
+        if "Date" in cols:
+            cols = ["Date"] + [c for c in cols if c != "Date"]
+            features_df = features_df[cols]
     else:
-        # Only fallback to raw if single-ticker columns are present (defensive)
         expected = {"Open", "High", "Low", "Close", "Volume"}
         if expected.issubset(set(df.columns)):
             features_df = compute_features(df)
+            if "Date" in df.columns:
+                features_df.insert(0, "Date", df["Date"].values)
         else:
             raise ValueError("No ticker columns found, and single-ticker expected columns not in dataframe.")
     return features_df
+
 
 
 if __name__ == "__main__":

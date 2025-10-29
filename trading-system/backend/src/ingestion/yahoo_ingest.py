@@ -46,10 +46,11 @@ def ingest_yahoo(
 ) -> Dict[str, Any]:
     df = fetch_yahoo_data(tickers, start, end, interval)
     if df is not None and not df.empty:
+        df = df.reset_index()
         df = flatten_columns(df)
         write_table(df, "raw")
-        min_date = str(df.index.min())
-        max_date = str(df.index.max())
+        min_date = str(df["Date"].min()) if "Date" in df.columns else None
+        max_date = str(df["Date"].max()) if "Date" in df.columns else None
         summary = {
             "success": True,
             "tickers": tickers,
@@ -63,6 +64,7 @@ def ingest_yahoo(
         error_msg = "No data available from Yahoo Finance for the given parameters."
         print(f"[INFO] {error_msg}")
         return {"success": False, "error": error_msg}
+
 
 if __name__ == "__main__":
     # Example for CLI/manual test use only

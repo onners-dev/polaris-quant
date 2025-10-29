@@ -39,6 +39,10 @@ def detect_outliers(df: pd.DataFrame, columns: List[str], z_thresh: float = 5.0)
 def basic_cleaning(df: pd.DataFrame) -> pd.DataFrame:
     df = flatten_columns(df)
     df = df.copy()
+    cols = list(df.columns)
+    if "Date" in cols:
+        cols = ["Date"] + [c for c in cols if c != "Date"]
+        df = df[cols]
     df = df.drop_duplicates()
     df = df.ffill().bfill()
     return df
