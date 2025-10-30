@@ -2,6 +2,9 @@ import { useAppStore } from "../store/useAppStore";
 import { ingestYahooStock } from "../services/ingestApi";
 import { useState } from "react";
 import TickerAutocomplete from "../components/TickerAutocomplete";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function Ingest() {
   const ticker = useAppStore((s) => s.ticker);
@@ -36,43 +39,47 @@ export default function Ingest() {
 
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Stock Data Ingestion</h2>
-      <div className="flex flex-col gap-4 mb-4">
-        <TickerAutocomplete
-          value={ticker}
-          onChange={setTicker}
-        />
-        <input
-          className="border rounded px-3 py-2"
-          type="date"
-          value={start}
-          onChange={e => setStart(e.target.value)}
-        />
-        <input
-          className="border rounded px-3 py-2"
-          type="date"
-          value={end}
-          onChange={e => setEnd(e.target.value)}
-        />
-        <button
-          onClick={handleIngest}
-          className="bg-blue-600 text-white py-2 rounded disabled:opacity-60"
-          disabled={!ticker || loading}
-        >
-          {loading ? "Fetching..." : "Fetch Data"}
-        </button>
-      </div>
-      {ingestResult && (
-        <div className="p-4 bg-green-100 rounded">
-          <strong>Success!</strong>
-          <pre className="text-xs">{JSON.stringify(ingestResult, null, 2)}</pre>
-        </div>
-      )}
-      {error && (
-        <div className="p-4 bg-red-100 rounded text-red-700">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Stock Data Ingestion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 mb-4">
+            <TickerAutocomplete value={ticker} onChange={setTicker} />
+            <Input
+              type="date"
+              value={start}
+              onChange={e => setStart(e.target.value)}
+              placeholder="Start Date"
+            />
+            <Input
+              type="date"
+              value={end}
+              onChange={e => setEnd(e.target.value)}
+              placeholder="End Date"
+            />
+            <Button
+              onClick={handleIngest}
+              disabled={!ticker || loading}
+              className="w-full"
+              size="lg"
+            >
+              {loading ? "Fetching..." : "Fetch Data"}
+            </Button>
+          </div>
+          {ingestResult && (
+            <div className="p-4 bg-green-100 rounded">
+              <strong>Success!</strong>
+              <pre className="text-xs">{JSON.stringify(ingestResult, null, 2)}</pre>
+            </div>
+          )}
+          {error && (
+            <div className="p-4 bg-red-100 rounded text-red-700">
+              <strong>Error:</strong> {error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

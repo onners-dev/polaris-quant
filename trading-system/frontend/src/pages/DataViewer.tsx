@@ -5,6 +5,16 @@ import { cleanData } from "../services/cleanApi";
 import { generateFeatures } from "../services/featuresApi";
 import TickerName from "../components/TickerName";
 import { useTickerMeta } from "../hooks/useTickerMeta";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type TableInfo = {
   start_date?: string;
@@ -97,99 +107,105 @@ export default function DataViewer() {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-semibold mb-6">Available Data</h2>
-      <div className="flex gap-4 mb-4">
-        <button
-          className="bg-blue-700 text-white px-4 py-2 rounded"
-          onClick={handleClean}
-          disabled={loading}
-        >
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+        <Button onClick={handleClean} disabled={loading} variant="default">
           Clean Data
-        </button>
-        <button
-          className="bg-green-700 text-white px-4 py-2 rounded"
-          onClick={handleFeatures}
-          disabled={loading}
-        >
+        </Button>
+        <Button onClick={handleFeatures} disabled={loading} variant="default">
           Generate Features
-        </button>
-        {actionStatus && <span>{actionStatus}</span>}
+        </Button>
+        {actionStatus && <span className="my-auto">{actionStatus}</span>}
       </div>
       {loading && <p>Loading...</p>}
       {error && <div className="p-4 bg-red-100 text-red-700">{error}</div>}
       {!loading && !error && (
         <div className="overflow-x-auto">
-          <table className="table-auto w-full text-left border rounded bg-white mb-6">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 border-b">Ticker</th>
-                <th className="px-4 py-2 border-b">Company</th>
-                <th className="px-4 py-2 border-b">Raw</th>
-                <th className="px-4 py-2 border-b">Cleaned</th>
-                <th className="px-4 py-2 border-b">Features</th>
-                <th className="px-4 py-2 border-b">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.isArray(tickers) &&
-                tickers.map((row) => (
-                  <tr key={row.ticker}>
-                    <td className="px-4 py-2 border-b font-mono">{row.ticker}</td>
-                    <td className="px-4 py-2 border-b">
-                      <TickerName ticker={row.ticker} />
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {row.raw
-                        ? `${row.raw.start_date?.substring(0, 10) || ""}—${row.raw.end_date?.substring(0, 10) || ""} (${row.raw.row_count})`
-                        : <span className="text-gray-400">None</span>}
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {row.cleaned
-                        ? `${row.cleaned.start_date?.substring(0, 10) || ""}—${row.cleaned.end_date?.substring(0, 10) || ""} (${row.cleaned.row_count})`
-                        : <span className="text-gray-400">None</span>}
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {row.features
-                        ? `${row.features.start_date?.substring(0, 10) || ""}—${row.features.end_date?.substring(0, 10) || ""} (${row.features.row_count})`
-                        : <span className="text-gray-400">None</span>}
-                    </td>
-                    <td className="px-4 py-2 border-b">
-                      {TABLE_OPTIONS.map(opt => (
-                        <button
-                          key={opt.value}
-                          className={
-                            ((row as any)[opt.value])
-                              ? "bg-gray-200 hover:bg-gray-300 rounded px-3 py-1 mr-1"
-                              : "bg-gray-100 rounded px-3 py-1 mr-1 opacity-50 cursor-not-allowed"
-                          }
-                          disabled={!(row as any)[opt.value]}
-                          onClick={() => {
-                            if ((row as any)[opt.value]) {
-                              setSelectedTicker(row.ticker);
-                              setSelectedTable(opt.value as any);
-                            }
-                          }}
-                        >View {opt.label}</button>
-                      ))}
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <Card>
+            <CardHeader>
+              <CardTitle>Data by Ticker</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ticker</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Raw</TableHead>
+                    <TableHead>Cleaned</TableHead>
+                    <TableHead>Features</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.isArray(tickers) &&
+                    tickers.map((row) => (
+                      <TableRow key={row.ticker}>
+                        <TableCell className="font-mono">{row.ticker}</TableCell>
+                        <TableCell>
+                          <TickerName ticker={row.ticker} />
+                        </TableCell>
+                        <TableCell>
+                          {row.raw
+                            ? `${row.raw.start_date?.substring(0, 10) || ""}—${row.raw.end_date?.substring(0, 10) || ""} (${row.raw.row_count})`
+                            : <span className="text-gray-400">None</span>}
+                        </TableCell>
+                        <TableCell>
+                          {row.cleaned
+                            ? `${row.cleaned.start_date?.substring(0, 10) || ""}—${row.cleaned.end_date?.substring(0, 10) || ""} (${row.cleaned.row_count})`
+                            : <span className="text-gray-400">None</span>}
+                        </TableCell>
+                        <TableCell>
+                          {row.features
+                            ? `${row.features.start_date?.substring(0, 10) || ""}—${row.features.end_date?.substring(0, 10) || ""} (${row.features.row_count})`
+                            : <span className="text-gray-400">None</span>}
+                        </TableCell>
+                        <TableCell>
+                          {TABLE_OPTIONS.map(opt => {
+                            const available = (row as any)[opt.value];
+                            return (
+                              <Button
+                                key={opt.value}
+                                variant={available ? "secondary" : "outline"}
+                                disabled={!available}
+                                size="sm"
+                                className="mr-1 mb-1"
+                                onClick={() => {
+                                  if (available) {
+                                    setSelectedTicker(row.ticker);
+                                    setSelectedTable(opt.value as any);
+                                  }
+                                }}
+                              >
+                                View {opt.label}
+                              </Button>
+                            );
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
           {selectedTicker && (
-            <div className="mt-6 bg-gray-100 rounded p-4">
-              <h3 className="font-bold text-lg mb-2 flex items-center gap-4">
-                Details for {selectedTicker}: {TABLE_OPTIONS.find(opt => opt.value === selectedTable)?.label}
-              </h3>
-              {actionStatus && <span>{actionStatus}</span>}
-              {!actionStatus && tableData.length === 0 && (
-                <span>No data found for this table/ticker.</span>
-              )}
-              {!actionStatus && tableData.length > 0 && (
-                <pre className="overflow-x-auto text-xs bg-gray-50 rounded p-2">
-                  {JSON.stringify(tableData.slice(0, 10), null, 2)} {/* Display sample */}
-                </pre>
-              )}
-            </div>
+            <Card className="mt-6 bg-gray-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-4 text-lg">
+                  Details for {selectedTicker}: {TABLE_OPTIONS.find(opt => opt.value === selectedTable)?.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {actionStatus && <span>{actionStatus}</span>}
+                {!actionStatus && tableData.length === 0 && (
+                  <span>No data found for this table/ticker.</span>
+                )}
+                {!actionStatus && tableData.length > 0 && (
+                  <pre className="overflow-x-auto text-xs bg-gray-50 rounded p-2">
+                    {JSON.stringify(tableData.slice(0, 10), null, 2)}
+                  </pre>
+                )}
+              </CardContent>
+            </Card>
           )}
         </div>
       )}

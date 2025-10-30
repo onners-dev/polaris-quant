@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import { listModels, getModelDetails } from "../services/modelsApi";
 import { trainModel } from "../services/modelsTrainApi";
 import { getAvailableData } from "../services/dataApi";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 
 type ModelMeta = {
   model_id: string;
@@ -69,72 +80,82 @@ export default function Models() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Trained Models</h2>
-      <div className="mb-4 flex gap-4 items-center">
-        <select
-          className="border rounded px-2 py-1"
-          multiple
-          style={{ minWidth: 150, height: 42 }}
-          value={tickersToTrain}
-          onChange={handleTickerChange}
-        >
-          {tickers.map(t => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <button
-          className="bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-60"
-          onClick={handleTrain}
-          disabled={!tickersToTrain.length || loading}
-        >
-          Train Model
-        </button>
-        <span className="text-sm text-gray-600">
-          (Select one or more tickers. Holding Cmd/Ctrl for multi-select)
-        </span>
-        {loading && <span>Working...</span>}
-      </div>
-      {error && <div className="p-4 bg-red-100 text-red-700">{error}</div>}
-      <div className="overflow-x-auto mb-6">
-        <table className="min-w-full bg-white border rounded shadow">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 border-b">Model ID</th>
-              <th className="px-4 py-2 border-b">Type</th>
-              <th className="px-4 py-2 border-b">Tickers</th>
-              <th className="px-4 py-2 border-b">Target</th>
-              <th className="px-4 py-2 border-b">Val Score</th>
-              <th className="px-4 py-2 border-b">Trained At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {models.map((m) => (
-              <tr
-                key={m.model_id}
-                className="hover:bg-blue-50 cursor-pointer"
-                onClick={() => handleRowClick(m.model_id)}
-              >
-                <td className="px-4 py-2 border-b font-mono">{m.model_id}</td>
-                <td className="px-4 py-2 border-b">{m.model_type}</td>
-                <td className="px-4 py-2 border-b">
-                  {Array.isArray(m.tickers)
-                    ? m.tickers.join(", ")
-                    : m.tickers}
-                </td>
-                <td className="px-4 py-2 border-b">{m.target}</td>
-                <td className="px-4 py-2 border-b">{m.val_score?.toFixed(4)}</td>
-                <td className="px-4 py-2 border-b">{m.trained_at?.substring(0, 19).replace("T", " ")}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {selected && (
-        <div className="bg-gray-100 p-4 rounded shadow">
-          <h3 className="text-lg font-bold mb-2">Model Details</h3>
-          <pre className="text-xs overflow-x-auto">{JSON.stringify(selected, null, 2)}</pre>
-        </div>
-      )}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Trained Models</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 items-center mb-4">
+            <select
+              className="border rounded px-2 py-1"
+              multiple
+              style={{ minWidth: 150, height: 42 }}
+              value={tickersToTrain}
+              onChange={handleTickerChange}
+            >
+              {tickers.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <Button
+              onClick={handleTrain}
+              disabled={!tickersToTrain.length || loading}
+              className="h-10"
+            >
+              Train Model
+            </Button>
+            <span className="text-sm text-gray-600">
+              (Select one or more tickers. Hold Cmd/Ctrl for multi-select)
+            </span>
+            {loading && <span>Working...</span>}
+          </div>
+          {error && <div className="p-4 bg-red-100 text-red-700 rounded">{error}</div>}
+          <div className="overflow-x-auto mb-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Model ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Tickers</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>Val Score</TableHead>
+                  <TableHead>Trained At</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {models.map((m) => (
+                  <TableRow
+                    key={m.model_id}
+                    className="cursor-pointer"
+                    onClick={() => handleRowClick(m.model_id)}
+                  >
+                    <TableCell className="font-mono">{m.model_id}</TableCell>
+                    <TableCell>{m.model_type}</TableCell>
+                    <TableCell>
+                      {Array.isArray(m.tickers)
+                        ? m.tickers.join(", ")
+                        : m.tickers}
+                    </TableCell>
+                    <TableCell>{m.target}</TableCell>
+                    <TableCell>{m.val_score?.toFixed(4)}</TableCell>
+                    <TableCell>{m.trained_at?.substring(0, 19).replace("T", " ")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {selected && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Model Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs overflow-x-auto">{JSON.stringify(selected, null, 2)}</pre>
+              </CardContent>
+            </Card>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

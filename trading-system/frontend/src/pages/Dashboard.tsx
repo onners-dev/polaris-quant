@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getAvailableData } from "../services/dataApi";
 import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const [tickers, setTickers] = useState<any[]>([]);
@@ -21,22 +23,32 @@ export default function Dashboard() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h2 className="text-3xl font-bold mb-8">Dashboard</h2>
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div className="bg-white shadow rounded p-6">
-          <div className="text-gray-500 mb-2">Tickers Ingested</div>
-          <div className="text-3xl font-bold">{tickers.length}</div>
-        </div>
-        <div className="bg-white shadow rounded p-6">
-          <div className="text-gray-500 mb-2">Last Ingest Date</div>
-          <div className="text-3xl font-bold">{lastIngest ? lastIngest.substring(0, 10) : "N/A"}</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-gray-500 text-base font-normal">Tickers Ingested</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{tickers.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-gray-500 text-base font-normal">Last Ingest Date</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{lastIngest ? lastIngest.substring(0, 10) : "N/A"}</div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex gap-4">
-        <Link to="/ingest" className="bg-blue-600 text-white py-2 px-4 rounded">
-          Ingest New Data
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Link to="/ingest" className="w-full sm:w-auto">
+          <Button className="w-full" size="lg">Ingest New Data</Button>
         </Link>
-        <Link to="/data" className="bg-gray-200 py-2 px-4 rounded">
-          Data Viewer
+        <Link to="/data" className="w-full sm:w-auto">
+          <Button variant="secondary" className="w-full" size="lg">
+            Data Viewer
+          </Button>
         </Link>
       </div>
       {/* You can add charts, recent activity/history, and more here */}
