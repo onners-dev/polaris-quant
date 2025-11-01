@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { listModels, getModelDetails } from "../services/modelsApi";
 import { trainModel } from "../services/modelsTrainApi";
 import { getAvailableData } from "../services/dataApi";
@@ -19,10 +19,16 @@ type ModelMeta = {
   model_type: string;
   tickers: string[] | string;
   target: string;
-  val_score: number;
-  trained_at: string;
-  model_path: string;
-  params: any;
+  val_score?: number;
+  val_sharpe?: number;
+  val_rmse?: number;
+  test_sharpe?: number;
+  test_rmse?: number;
+  test_drawdown?: number;
+  trained_at?: string;
+  model_path?: string;
+  params?: any;
+  [key: string]: any;
 };
 
 export default function Models() {
@@ -33,6 +39,7 @@ export default function Models() {
 
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickersToTrain, setTickersToTrain] = useState<string[]>([]);
+  const [filterTicker, setFilterTicker] = useState<string>("");
 
   useEffect(() => {
     setLoading(true);
@@ -78,11 +85,32 @@ export default function Models() {
     setTickersToTrain(selectedOptions);
   }
 
+  // New: Filtering and Sorting
+  const filteredLeaderboard = useMemo(() => {
+    let filtered = models;
+    if (filterTicker) {
+      filtered = filtered.filter(m => {
+        if (Array.isArray(m.tickers)) {
+          return m.tickers.map(t => t.toUpperCase()).includes(filterTicker.toUpperCase());
+        }
+        return String(m.tickers).toUpperCase() === filterTicker.toUpperCase();
+      });
+    }
+    // Sort by test_sharpe descending, then test_rmse ascending
+    return filtered
+      .slice()
+      .sort((a, b) => (Number(b.test_sharpe || 0) - Number(a.test_sharpe || 0)) ||
+                      (Number(a.test_rmse || Infinity) - Number(b.test_rmse || Infinity))
+      );
+  }, [models, filterTicker]);
+
+  const championId = filteredLeaderboard.length > 0 ? filteredLeaderboard[0].model_id : null;
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Trained Models</CardTitle>
+          <CardTitle>Model Leaderboard</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 items-center mb-4">
@@ -109,27 +137,50 @@ export default function Models() {
             </span>
             {loading && <span>Working...</span>}
           </div>
+
+          {/* New: Filter bar */}
+          <div className="mb-2 flex gap-4 items-center">
+            <label htmlFor="filterTicker" className="text-sm">Filter by ticker:</label>
+            <select
+              id="filterTicker"
+              className="border rounded px-2 py-1"
+              value={filterTicker}
+              onChange={e => setFilterTicker(e.target.value)}
+            >
+              <option value="">All</option>
+              {tickers.map(t =>
+                <option key={t} value={t}>{t}</option>
+              )}
+            </select>
+          </div>
+
           {error && <div className="p-4 bg-red-100 text-red-700 rounded">{error}</div>}
+
           <div className="overflow-x-auto mb-6">
-            <Table>
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Model ID</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Tickers</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Val Score</TableHead>
+                  <TableHead>Test Sharpe</TableHead>
+                  <TableHead>Test RMSE</TableHead>
+                  <TableHead>Test MaxDD</TableHead>
                   <TableHead>Trained At</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {models.map((m) => (
+                {filteredLeaderboard.map((m) => (
                   <TableRow
                     key={m.model_id}
-                    className="cursor-pointer"
+                    className={`cursor-pointer hover:bg-muted transition 
+                               ${championId === m.model_id ? "border-l-4 border-green-500 font-semibold bg-green-50 dark:bg-green-950" : ""}`}
                     onClick={() => handleRowClick(m.model_id)}
+                    title={championId === m.model_id ? "Champion Model" : ""}
                   >
-                    <TableCell className="font-mono">{m.model_id}</TableCell>
+                    <TableCell className="font-mono text-xs">{m.model_id.slice(0, 16)}</TableCell>
                     <TableCell>{m.model_type}</TableCell>
                     <TableCell>
                       {Array.isArray(m.tickers)
@@ -137,13 +188,21 @@ export default function Models() {
                         : m.tickers}
                     </TableCell>
                     <TableCell>{m.target}</TableCell>
-                    <TableCell>{m.val_score?.toFixed(4)}</TableCell>
+                    <TableCell>{m.test_sharpe !== undefined ? m.test_sharpe.toFixed(4) : "-"}</TableCell>
+                    <TableCell>{m.test_rmse !== undefined ? m.test_rmse.toFixed(5) : "-"}</TableCell>
+                    <TableCell>{m.test_drawdown !== undefined ? m.test_drawdown.toFixed(3) : "-"}</TableCell>
                     <TableCell>{m.trained_at?.substring(0, 19).replace("T", " ")}</TableCell>
+                    <TableCell>
+                      {championId === m.model_id &&
+                        <span className="text-xs text-green-700 bg-green-200 rounded px-2 py-0.5">Champion</span>
+                      }
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+
           {selected && (
             <Card>
               <CardHeader>

@@ -1,7 +1,8 @@
 import axios from "axios";
 
-export async function listModels(ticker?: string) {
-  const url = ticker ? `/api/models/list?ticker=${ticker}` : `/api/models/list`;
+export async function listModels({ ticker }: { ticker?: string } = {}) {
+  let url = `/api/models/list`;
+  if (ticker) url += `?ticker=${encodeURIComponent(ticker)}`;
   const response = await axios.get(url);
   return response.data;
 }

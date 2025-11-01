@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from src.backtesting.backtesting_engine import BacktestingEngine
+from src.backtesting.backtesting_engine_mode import BacktestingEngine
 from src.backtesting import backtest_results
 import traceback
 
@@ -19,15 +19,14 @@ class BacktestRequest(BaseModel):
 def run_backtest(req: BacktestRequest):
     try:
         engine = BacktestingEngine(transaction_cost_bps=req.transaction_cost_bps, slippage_bps=req.slippage_bps)
-        result = engine.run(
+        result = engine.run_persistent(
             model_id=req.model_id,
             tickers=req.tickers,
             start_date=req.start_date,
-            end_date=req.end_date,
+            end_date=req.end_date
         )
-        return {"success": True, "result": result.to_dict()}
+        return {"success": True, "result": result.to_dict(), "run_id": result.params.get("run_id")}
     except Exception as e:
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/backtest/list")

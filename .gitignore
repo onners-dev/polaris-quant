@@ -161,3 +161,6 @@ pearai.toml
 # Mac/Linux swap files
 *.swp
 *~
+
+
+basicprompt.txt

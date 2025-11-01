@@ -10,3 +10,4 @@ pydantic
 httpx
 numpy
 joblib
+tabulate

@@ -1,3 +1,4 @@
+#Uses the basic backtesting engine but also persists the results to the database
 import uuid
 from datetime import datetime
 from .backtest_results import save_backtest_result

@@ -1,3 +1,4 @@
+# This file does not write the backtesting to the database
 import os
 import duckdb
 import pandas as pd
