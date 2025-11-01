@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.api.routes import ingest, data, clean, features, raw, features_data, table, models, models_train, backtest, backtest_results
+from src.api.routes import ingest, data, clean, features, raw, features_data, table, models, models_train, backtest, backtest_results, backtest_walkforward
 
 app = FastAPI()
 app.include_router(ingest.router, prefix="/api")
@@ -13,3 +13,4 @@ app.include_router(models.router, prefix="/api")
 app.include_router(models_train.router, prefix="/api")
 app.include_router(backtest.router, prefix="/api")
 app.include_router(backtest_results.router, prefix="/api")
+app.include_router(backtest_walkforward.router, prefix="/api")
