@@ -3,6 +3,7 @@ import Dashboard from "./pages/Dashboard";
 import Ingest from "./pages/Ingest";
 import Models from "./pages/Models";
 import DataViewer from "./pages/DataViewer";
+import Backtesting from "./pages/Backtesting";
 import { Button } from "@/components/ui/button";
 
 function NavLinks() {
@@ -12,6 +13,7 @@ function NavLinks() {
     { href: "/ingest", label: "Ingest" },
     { href: "/data", label: "Data Viewer" },
     { href: "/models", label: "Models" },
+    { href: "/backtesting", label: "Backtesting" },
   ];
 
   return (
@@ -46,6 +48,7 @@ function App() {
             <Route path="/ingest" element={<Ingest />} />
             <Route path="/data" element={<DataViewer />} />
             <Route path="/models" element={<Models />} />
+            <Route path="/backtesting" element={<Backtesting />} />
           </Routes>
         </section>
       </main>

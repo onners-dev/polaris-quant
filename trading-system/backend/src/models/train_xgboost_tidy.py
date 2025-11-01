@@ -8,6 +8,7 @@ import hashlib
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from src.utils.json_safe import clean_for_json
+from src.utils.duckdb_helpers import append_table
 
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/database.duckdb"))
 MODEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../models/artifacts"))
@@ -116,6 +117,28 @@ class ModelTrainer:
         with open(REGISTRY_PATH, "w") as f:
             json.dump(reg, f, indent=2)
 
+    def write_predictions(self):
+        import duckdb
+        df = self.fetch_features()
+        if df.empty or self.model is None or self.registry_meta is None:
+            return
+
+        with duckdb.connect(DB_PATH) as con:
+            con.execute("DELETE FROM predictions WHERE model_id = ?", [self.registry_meta["model_id"]])
+
+        X_pred = df.drop(columns=["Date", "Ticker", self.target_col])
+        preds = self.model.predict(X_pred)
+        out_df = pd.DataFrame({
+            "model_id": self.registry_meta["model_id"],
+            "Date": df["Date"],
+            "Ticker": df["Ticker"],
+            "Prediction": preds,
+            "Return_1d": df[self.target_col],
+        })
+        
+        from src.utils.duckdb_helpers import append_table
+        append_table(out_df, "predictions")
+
     def run(self):
         df = self.fetch_features()
         if df.empty:
@@ -124,6 +147,7 @@ class ModelTrainer:
         self.train(X_train, y_train, X_val, y_val)
         meta = self.save_artifacts()
         self.update_registry()
+        self.write_predictions()  # <-- AUTOMATIC prediction write
         return meta
 
 if __name__ == "__main__":

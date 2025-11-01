@@ -24,3 +24,16 @@ def read_table(table: str) -> pd.DataFrame:
 def run_query(query: str) -> pd.DataFrame:
     with get_con() as con:
         return con.execute(query).df()
+
+def ensure_predictions_table():
+    ddl = """
+    CREATE TABLE IF NOT EXISTS predictions (
+        model_id VARCHAR,
+        Date VARCHAR,
+        Ticker VARCHAR,
+        Prediction DOUBLE,
+        Return_1d DOUBLE
+    );
+    """
+    with get_con() as con:
+        con.execute(ddl)

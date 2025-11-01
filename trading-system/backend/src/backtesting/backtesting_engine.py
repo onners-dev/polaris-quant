@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Callable, Any
 from datetime import datetime
+from src.utils.duckdb_helpers import ensure_predictions_table, get_con
 
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/database.duckdb"))
 
@@ -38,8 +39,9 @@ class BacktestingEngine:
         self.position_sizer = position_sizer or self.default_position_sizer
 
     def load_predictions(self, model_id: str) -> pd.DataFrame:
-        with duckdb.connect(self.db_path) as con:
-            preds = con.execute(f"SELECT * FROM predictions WHERE model_id = ?", [model_id]).fetchdf()
+        ensure_predictions_table()
+        with get_con() as con:
+            preds = con.execute("SELECT * FROM predictions WHERE model_id = ?", [model_id]).df()
         return preds
 
     def run(
@@ -52,7 +54,7 @@ class BacktestingEngine:
         cost_bps: Optional[float] = None,
         slippage_bps: Optional[float] = None,
         params: Optional[Dict[str, Any]] = None,
-    ) -> BacktestResult:
+    ) -> 'BacktestResult':
         preds = self.load_predictions(model_id)
         if tickers:
             preds = preds[preds["Ticker"].isin(tickers)]
@@ -62,29 +64,25 @@ class BacktestingEngine:
             preds = preds[preds["Date"] <= end_date]
         preds = preds.sort_values(["Date", "Ticker"])
 
-        # Generate trading signals: simple example: buy if pred > 0, sell if pred < 0
+        if preds.empty:
+            raise ValueError(f"No prediction data found for model_id='{model_id}'. Cannot run backtest.")
+
         preds["Signal"] = np.where(preds["Prediction"] > 0, 1, np.where(preds["Prediction"] < 0, -1, 0))
 
-        # Run position sizer (per date or globally, for now simple - equal weight per signal)
         signals = preds.pivot(index="Date", columns="Ticker", values="Signal").fillna(0)
         position_sizer_fn = position_sizer or self.position_sizer
         weights = signals.apply(position_sizer_fn, axis=1, result_type="expand")
 
-        # Get returns (should exist in preds, otherwise could fetch from features/returns table)
         returns = preds.pivot(index="Date", columns="Ticker", values="Return_1d").fillna(0)
         weights = weights.reindex_like(returns).fillna(0)
 
-        # Calculate daily portfolio returns
         gross_returns = (weights.shift().fillna(0) * returns).sum(axis=1)
         cost = (weights.diff().abs().sum(axis=1)) * ((cost_bps or self.transaction_cost_bps) / 10000.0)
         slippage = weights.diff().abs().sum(axis=1) * ((slippage_bps or self.slippage_bps) / 10000.0)
         net_returns = gross_returns - cost - slippage
 
-        # Build equity curve
         equity_curve = (1 + net_returns).cumprod() * self.initial_capital
 
-        # Create a trades DataFrame for transparency (date, action, ticker, size)
-        trade_mask = weights.diff().abs() > 1e-5
         trade_list = []
         for date, row in weights.diff().iterrows():
             for ticker, change in row.items():
@@ -108,21 +106,25 @@ class BacktestingEngine:
 
     @staticmethod
     def compute_metrics(equity: pd.Series, returns: pd.Series) -> Dict[str, float]:
+        if equity.empty or returns.empty:
+            return {
+                "total_return": 0.0,
+                "sharpe": 0.0,
+                "max_drawdown": 0.0,
+                "cagr": 0.0,
+                "volatility": 0.0,
+            }
         daily = returns
         total_return = equity.iloc[-1] / equity.iloc[0] - 1
         sharpe = daily.mean() / (daily.std(ddof=0) + 1e-8) * (252 ** 0.5)
         drawdown = 1 - equity / equity.cummax()
         max_dd = drawdown.max()
+        cagr = (equity.iloc[-1] / equity.iloc[0]) ** (252 / len(equity)) - 1 if len(equity) > 1 else 0.0
+        volatility = daily.std(ddof=0) * (252 ** 0.5)
         return {
             "total_return": float(total_return),
             "sharpe": float(sharpe),
             "max_drawdown": float(max_dd),
-            "cagr": float((equity.iloc[-1] / equity.iloc[0]) ** (252 / len(equity)) - 1),
-            "volatility": float(daily.std(ddof=0) * (252 ** 0.5)),
+            "cagr": float(cagr),
+            "volatility": float(volatility),
         }
-
-if __name__ == "__main__":
-    # Example usage (supply model_id that exists in DuckDB "predictions" table)
-    engine = BacktestingEngine()
-    result = engine.run(model_id="EXAMPLE_MODEL_ID", tickers=["AAPL", "MSFT"])
-    print(result.to_dict())

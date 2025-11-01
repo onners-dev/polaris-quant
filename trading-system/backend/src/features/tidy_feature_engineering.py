@@ -17,10 +17,11 @@ def wide_to_tidy_features(df: pd.DataFrame) -> pd.DataFrame:
     tidy = pd.concat(all_records, axis=0, ignore_index=True)
     cols = ["Date", "Ticker"] + [c for c in tidy.columns if c not in ("Date", "Ticker")]
     tidy = tidy[cols]
+    tidy = tidy.sort_values(["Date", "Ticker"])
+    tidy = tidy.drop_duplicates(subset=["Date", "Ticker"], keep="last")
     return tidy
 
 if __name__ == "__main__":
-    # Use the output of your wide feature pipeline
     df = read_table("features")
     tidy = wide_to_tidy_features(df)
     write_table(tidy, "features_tidy")
