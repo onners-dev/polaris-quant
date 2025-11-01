@@ -5,6 +5,72 @@ import { Card } from "../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
+function getMetricInterpretation(metrics: any) {
+  if (!metrics) return "";
+  const {
+    total_return,
+    sharpe,
+    max_drawdown,
+    cagr,
+    volatility
+  } = metrics;
+
+  if (sharpe === undefined || total_return === undefined) return "";
+
+  let summary = [];
+
+  // Return summary
+  if (total_return > 0.2)
+    summary.push("Strong positive return.");
+  else if (total_return > 0.05)
+    summary.push("Modest gain over period.");
+  else if (total_return < -0.2)
+    summary.push("Significant loss in backtest.");
+  else if (total_return < 0)
+    summary.push("Small loss overall.");
+  else
+    summary.push("Flat/neutral performance.");
+
+  // Sharpe summary
+  if (sharpe > 2)
+    summary.push("Excellent risk-adjusted performance (high Sharpe).");
+  else if (sharpe > 1)
+    summary.push("Good risk-adjusted performance.");
+  else if (sharpe > 0.5)
+    summary.push("Acceptable but can be improved.");
+  else if (sharpe < 0)
+    summary.push("Worse than holding cash (negative Sharpe).");
+  else
+    summary.push("Low risk-adjusted return (Sharpe ~0).");
+
+  // Drawdown
+  if (max_drawdown > 0.5)
+    summary.push("⚠️ High risk: experienced deep drawdowns.");
+  else if (max_drawdown > 0.3)
+    summary.push("Moderate drawdowns.");
+
+  // Volatility
+  if (volatility && volatility > 0.5)
+    summary.push("This system is highly volatile.");
+  else if (volatility && volatility < 0.15)
+    summary.push("Low or below-market volatility.");
+
+  // CAGR
+  if (cagr !== undefined) {
+    if (cagr > 0.15)
+      summary.push("Strong annualized growth (CAGR).");
+    else if (cagr > 0)
+      summary.push("Positive annualized growth.");
+    else if (cagr < -0.10)
+      summary.push("Annualized shrinkage/drift.");
+  }
+
+  if (summary.length === 0) {
+    summary.push("No meaningful performance detected.");
+  }
+  return summary.join(" ");
+}
+
 export default function Backtesting() {
   const [models, setModels] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
@@ -75,6 +141,11 @@ export default function Backtesting() {
         <Card>
           <div className="mb-2 space-y-2">
             <div className="font-semibold">Metrics</div>
+            {backtestResult?.metrics && (
+              <div className={`p-2 rounded mb-2 text-sm ${backtestResult.metrics.sharpe > 1 ? "bg-green-100 text-green-800" : backtestResult.metrics.sharpe < 0 ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-900"}`}>
+                {getMetricInterpretation(backtestResult.metrics)}
+              </div>
+            )}
             <pre className="text-xs bg-neutral-100 rounded p-2 overflow-auto">{JSON.stringify(backtestResult.metrics, null, 2)}</pre>
             <div className="font-semibold mt-4">Equity Curve</div>
             <div style={{ width: "100%", height: 200 }}>
