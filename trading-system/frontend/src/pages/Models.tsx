@@ -27,9 +27,21 @@ type ModelMeta = {
   test_drawdown?: number;
   trained_at?: string;
   model_path?: string;
+  features_hash_train?: string;
   params?: any;
   [key: string]: any;
 };
+
+type LatestHashMap = { [modelId: string]: string };
+
+async function fetchLatestHashForModel(model: ModelMeta): Promise<[string, string]> {
+  const tickers = Array.isArray(model.tickers) ? model.tickers : [model.tickers];
+  const params = new URLSearchParams();
+  tickers.forEach(t => params.append("tickers", t));
+  params.append("target", model.target || "Return_1d");
+  const res = await fetch(`/api/data/latest-hash?${params}`).then(r => r.json());
+  return [model.model_id, res.features_hash];
+}
 
 export default function Models() {
   const [models, setModels] = useState<ModelMeta[]>([]);
@@ -41,14 +53,24 @@ export default function Models() {
   const [tickersToTrain, setTickersToTrain] = useState<string[]>([]);
   const [filterTicker, setFilterTicker] = useState<string>("");
 
+  const [latestHashes, setLatestHashes] = useState<LatestHashMap>({});
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
       listModels(),
       getAvailableData()
-    ]).then(([modelData, tickersData]) => {
+    ])
+    .then(async ([modelData, tickersData]) => {
       setModels(Array.isArray(modelData) ? modelData : []);
       setTickers(Array.isArray(tickersData) ? tickersData.map((d: any) => d.ticker) : []);
+      // Fetch per-model latest hash for accurate drift badge
+      if (Array.isArray(modelData)) {
+        const entries = await Promise.all(modelData.map(fetchLatestHashForModel));
+        const hashes: LatestHashMap = {};
+        entries.forEach(([mid, hash]) => { hashes[mid] = hash; });
+        setLatestHashes(hashes);
+      }
     })
     .catch(e => setError(e.message || "Failed to load models/tickers"))
     .finally(() => setLoading(false));
@@ -85,7 +107,6 @@ export default function Models() {
     setTickersToTrain(selectedOptions);
   }
 
-  // New: Filtering and Sorting
   const filteredLeaderboard = useMemo(() => {
     let filtered = models;
     if (filterTicker) {
@@ -96,7 +117,6 @@ export default function Models() {
         return String(m.tickers).toUpperCase() === filterTicker.toUpperCase();
       });
     }
-    // Sort by test_sharpe descending, then test_rmse ascending
     return filtered
       .slice()
       .sort((a, b) => (Number(b.test_sharpe || 0) - Number(a.test_sharpe || 0)) ||
@@ -138,7 +158,6 @@ export default function Models() {
             {loading && <span>Working...</span>}
           </div>
 
-          {/* New: Filter bar */}
           <div className="mb-2 flex gap-4 items-center">
             <label htmlFor="filterTicker" className="text-sm">Filter by ticker:</label>
             <select
@@ -186,6 +205,11 @@ export default function Models() {
                       {Array.isArray(m.tickers)
                         ? m.tickers.join(", ")
                         : m.tickers}
+                      {latestHashes[m.model_id] && m.features_hash_train && latestHashes[m.model_id] !== m.features_hash_train && (
+                        <span className="ml-2 px-2 py-0.5 text-xs rounded bg-orange-100 text-orange-900">
+                          Data Drift
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>{m.target}</TableCell>
                     <TableCell>{m.test_sharpe !== undefined ? m.test_sharpe.toFixed(4) : "-"}</TableCell>
