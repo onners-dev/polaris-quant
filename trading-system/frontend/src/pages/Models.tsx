@@ -13,6 +13,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+// Add Recharts for visuals
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList
+} from "recharts";
 
 type ModelMeta = {
   model_id: string;
@@ -29,6 +33,9 @@ type ModelMeta = {
   model_path?: string;
   features_hash_train?: string;
   params?: any;
+  features?: string[];
+  feature_importances?: number[];
+  cv_results?: any[];
   [key: string]: any;
 };
 
@@ -43,37 +50,149 @@ async function fetchLatestHashForModel(model: ModelMeta): Promise<[string, strin
   return [model.model_id, res.features_hash];
 }
 
+function mean(arr: number[]) {
+  if (!Array.isArray(arr) || arr.length === 0) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function round(n: number | undefined, d = 4) {
+  return n === undefined ? "-" : n.toFixed(d);
+}
+
+function FeatureImportanceChart({ features, importances }: { features: string[], importances: number[] }) {
+  const chartData = features.map((f, i) => ({
+    feature: f,
+    importance: importances[i] || 0,
+  }))
+  .sort((a, b) => b.importance - a.importance)
+  .slice(0, 12); // Top 12
+
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={chartData} layout="vertical" margin={{left: 16, right: 16, top: 8, bottom: 8}}>
+        <XAxis type="number" />
+        <YAxis type="category" dataKey="feature" width={110} />
+        <Tooltip />
+        <Bar dataKey="importance" fill="#34d399">
+          <LabelList dataKey="importance" position="right" formatter={v => v.toFixed(3)} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ModelDetail({ model }: { model: ModelMeta }) {
+  if (!model) return null;
+  const { model_id, tickers, target, trained_at, params, features = [], feature_importances = [], cv_results = [] } = model;
+
+  // Find best cv run (lowest mean val_rmse across folds)
+  let bestCfg, bestMetrics: any[] = [];
+  let bestScore = Infinity;
+
+  if (Array.isArray(cv_results)) {
+    for (const r of cv_results) {
+      const metrics = r.metrics || [];
+      const mscore = mean(metrics.map(f => f.val_rmse));
+      if (mscore < bestScore) {
+        bestScore = mscore;
+        bestCfg = r.cfg;
+        bestMetrics = metrics;
+      }
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-muted rounded p-4 mb-2 flex flex-col sm:flex-row gap-8">
+        <div>
+          <div className="font-semibold">Model ID:</div>
+          <div className="font-mono text-xs truncate mb-1">{model_id}</div>
+          <div><span className="font-semibold">Tickers:</span> {Array.isArray(tickers) ? tickers.join(", ") : tickers}</div>
+          <div><span className="font-semibold">Target:</span> {target}</div>
+          <div><span className="font-semibold">Trained At:</span> {trained_at?.substring(0, 19).replace("T", " ")}</div>
+        </div>
+        <div>
+          <div className="font-semibold">Best Params:</div>
+          <pre className="text-xs">{JSON.stringify(params || bestCfg, null, 2)}</pre>
+        </div>
+      </div>
+      <div>
+        <div className="font-semibold mb-1">Feature Importances:</div>
+        {features?.length && feature_importances?.length ? (
+          <FeatureImportanceChart features={features} importances={feature_importances} />
+        ) : (
+          <div className="text-sm text-gray-500">No feature importances recorded.</div>
+        )}
+      </div>
+      <div>
+        <div className="font-semibold mb-1">Cross-Validation Results:</div>
+        {Array.isArray(cv_results) && cv_results.length ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Config</TableHead>
+                  {[...Array(cv_results[0].metrics.length).keys()].map((fold) =>
+                    <TableHead key={fold}>Fold {fold + 1} (Val/Test)</TableHead>
+                  )}
+                  <TableHead>Mean Val RMSE</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cv_results.map((r, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <pre className="text-xs">{JSON.stringify(r.cfg, null, 1)}</pre>
+                    </TableCell>
+                    {r.metrics.map((m: any, j: number) =>
+                      <TableCell key={j} className="text-xs">
+                        <div>Val RMSE: {round(m.val_rmse, 5)}</div>
+                        <div>Val Sharpe: {round(m.val_sharpe)}</div>
+                        <div>Test RMSE: {round(m.test_rmse, 5)}</div>
+                        <div>Test Sharpe: {round(m.test_sharpe)}</div>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      {round(mean(r.metrics.map((m: any) => m.val_rmse)), 5)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500">No CV history available for this model.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Models() {
   const [models, setModels] = useState<ModelMeta[]>([]);
   const [selected, setSelected] = useState<ModelMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickersToTrain, setTickersToTrain] = useState<string[]>([]);
   const [filterTicker, setFilterTicker] = useState<string>("");
-
   const [latestHashes, setLatestHashes] = useState<LatestHashMap>({});
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      listModels(),
-      getAvailableData()
-    ])
-    .then(async ([modelData, tickersData]) => {
-      setModels(Array.isArray(modelData) ? modelData : []);
-      setTickers(Array.isArray(tickersData) ? tickersData.map((d: any) => d.ticker) : []);
-      // Fetch per-model latest hash for accurate drift badge
-      if (Array.isArray(modelData)) {
-        const entries = await Promise.all(modelData.map(fetchLatestHashForModel));
-        const hashes: LatestHashMap = {};
-        entries.forEach(([mid, hash]) => { hashes[mid] = hash; });
-        setLatestHashes(hashes);
-      }
-    })
-    .catch(e => setError(e.message || "Failed to load models/tickers"))
-    .finally(() => setLoading(false));
+    Promise.all([listModels(), getAvailableData()])
+      .then(async ([modelData, tickersData]) => {
+        setModels(Array.isArray(modelData) ? modelData : []);
+        setTickers(Array.isArray(tickersData) ? tickersData.map((d: any) => d.ticker) : []);
+        if (Array.isArray(modelData)) {
+          const entries = await Promise.all(modelData.map(fetchLatestHashForModel));
+          const hashes: LatestHashMap = {};
+          entries.forEach(([mid, hash]) => { hashes[mid] = hash; });
+          setLatestHashes(hashes);
+        }
+      })
+      .catch(e => setError(e.message || "Failed to load models/tickers"))
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleTrain() {
@@ -120,7 +239,7 @@ export default function Models() {
     return filtered
       .slice()
       .sort((a, b) => (Number(b.test_sharpe || 0) - Number(a.test_sharpe || 0)) ||
-                      (Number(a.test_rmse || Infinity) - Number(b.test_rmse || Infinity))
+        (Number(a.test_rmse || Infinity) - Number(b.test_rmse || Infinity))
       );
   }, [models, filterTicker]);
 
@@ -227,13 +346,13 @@ export default function Models() {
             </Table>
           </div>
 
-          {selected && (
+          {!!selected && (
             <Card>
               <CardHeader>
                 <CardTitle>Model Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <pre className="text-xs overflow-x-auto">{JSON.stringify(selected, null, 2)}</pre>
+                <ModelDetail model={selected} />
               </CardContent>
             </Card>
           )}

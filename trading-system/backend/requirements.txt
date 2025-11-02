@@ -11,3 +11,4 @@ httpx
 numpy
 joblib
 tabulate
+lightgbm
